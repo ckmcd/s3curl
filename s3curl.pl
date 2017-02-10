@@ -58,6 +58,7 @@ my $copySourceObject;
 my $copySourceRange;
 my $postBody;
 my $calculateContentMD5 = 0;
+my $dryRun;
 
 my $DOTFILENAME=".s3curl";
 my $EXECFILE=$FindBin::Bin;
@@ -82,6 +83,7 @@ if (-f $DOTFILE) {
     die "Failed to eval() file $DOTFILE:\n$@\n" if ($@);
 }
 
+Getopt::Long::Configure('pass_through');
 GetOptions(
     'id=s' => \$keyId,
     'key=s' => \$cmdLineSecretKey,
@@ -98,6 +100,7 @@ GetOptions(
     'help' => \$help,
     'debug' => \$debug,
     'calculateContentMd5' => \$calculateContentMD5,
+    'dry-run' => \$dryRun,
 );
 
 my $usage = <<USAGE;
@@ -115,6 +118,7 @@ Usage $0 --id friendly-name (or AWSAccessKeyId) [options] -- [curl-options] [URL
   --createBucket [<region>]   create-bucket with optional location constraint
   --head                      HEAD request
   --debug                     enable debug logging
+  --dry-run                   Don\'t execute curl, just show what the execution would be
  common curl options:
   -H 'x-amz-acl: public-read' another way of using canned ACLs
   -v                          verbose logging
@@ -206,10 +210,10 @@ for (my $i=0; $i<@ARGV; $i++) {
     }
     elsif ($arg =~ /\-X/) {
         # mainly for DELETE
-    $method = $ARGV[++$i];
+        $method = $ARGV[++$i];
     }
     elsif ($arg =~ /\-H/) {
-    my $header = $ARGV[++$i];
+        my $header = $ARGV[++$i];
         #check for host: and x-amz*
         if ($header =~ /^[Hh][Oo][Ss][Tt]:(.+)$/) {
             $host = $1;
@@ -277,8 +281,14 @@ if (defined $createBucket) {
 
 push @args, @ARGV;
 
-debug("exec $CURL " . join (" ", map { / / && qq/'$_'/ || $_ } @args));
-exec($CURL, @args)  or die "can't exec program: $!";
+my $cmdline = "$CURL " . join (" ", map { / / && qq/'$_'/ || $_ } @args);
+if (!defined $dryRun) {
+    debug($cmdline);
+    exec($CURL, @args) or die "can't exec program: $!";
+}
+else {
+    print STDERR "s3curl: $cmdline\n";
+}
 
 sub debug {
     my ($str) = @_;
