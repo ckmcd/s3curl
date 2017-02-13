@@ -123,7 +123,8 @@ Usage $0 --id friendly-name (or AWSAccessKeyId) [options] -- [curl-options] [URL
   -H 'x-amz-acl: public-read' another way of using canned ACLs
   -v                          verbose logging
 USAGE
-die $usage if $help || !defined $keyId;
+
+die $usage if $help;
 
 if ($cmdLineSecretKey) {
     printCmdlineSecretWarning();
@@ -131,6 +132,7 @@ if ($cmdLineSecretKey) {
 
     $secretKey = $cmdLineSecretKey;
 } else {
+    $keyId = "default" if !defined $keyId;
     my $keyinfo = $awsSecretAccessKeys{$keyId};
     die "I don't know about key with friendly name $keyId. " .
         "Do you need to set it up in $DOTFILE?"
